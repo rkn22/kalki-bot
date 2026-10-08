@@ -1,0 +1,20 @@
+name: Kalki Daily
+on:
+  schedule:
+    - cron: '15 3 * * 1-5'
+    - cron: '0 6 * * 1-5'
+    - cron: '45 9 * * 1-5'
+  workflow_dispatch:
+jobs:
+  bot:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v3
+      - uses: actions/setup-python@v4
+        with:
+          python-version: '3.11'
+      - run: pip install -r requirements.txt
+      - run: python kalki_bot.py
+        env:
+          BOT_TOKEN: ${{ secrets.BOT_TOKEN }}
+          CHAT_ID: ${{ secrets.CHAT_ID }}
