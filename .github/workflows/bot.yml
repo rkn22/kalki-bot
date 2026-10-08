@@ -1,8 +1,15 @@
 name: bot
 on:
-  workflow_dispatch:
   schedule:
-    - cron: '*/15 3-10 * * 1-5'
+    - cron: '*/15 3-9 * * 1-5'
+  workflow_dispatch:
+    inputs:
+      live:
+        description: 'LIVE report pathao'
+        required: false
+        type: boolean
+        default: false
+
 jobs:
   build:
     runs-on: ubuntu-latest
@@ -10,12 +17,13 @@ jobs:
       - uses: actions/checkout@v3
       - uses: actions/setup-python@v4
         with:
-          python-version: '3.9'
+          python-version: '3.10'
       - name: Install deps
-        run: pip install yfinance requests python-telegram-bot pytz google-generativeai
+        run: pip install yfinance requests google-generativeai pytz --quiet
       - name: Run bot
         env:
           BOT_TOKEN: ${{ secrets.BOT_TOKEN }}
           CHAT_ID: ${{ secrets.CHAT_ID }}
           GEMINI_API_KEY: ${{ secrets.GEMINI_API_KEY }}
+          LIVE_MODE: ${{ inputs.live }}
         run: python kalki_bot.py
