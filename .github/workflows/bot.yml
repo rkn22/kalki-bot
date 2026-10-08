@@ -12,7 +12,7 @@ jobs:
         with:
           python-version: '3.9'
       - name: Install deps
-        run: pip install yfinance requests python-telegram-bot pytz
+        run: pip install yfinance requests python-telegram-bot pytz google-generativeai
       - name: Run bot
         env:
           BOT_TOKEN: ${{ secrets.BOT_TOKEN }}
