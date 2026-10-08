@@ -1,8 +1,5 @@
 name: KALKI V9 Bot
-
 on:
-  schedule:
-    - cron: '*/15 3-10 * * 1-5'  # Market time 9AM-3:30PM IST
   workflow_dispatch:
     inputs:
       mode:
@@ -12,28 +9,19 @@ on:
         type: choice
         options:
           - LIVE
-          - TEST
 
 jobs:
   run-kalki:
     runs-on: ubuntu-latest
-    
     steps:
-      - name: Checkout code
-        uses: actions/checkout@v4
-
-      - name: Setup Python
-        uses: actions/setup-python@v5
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
         with:
           python-version: '3.11'
-
-      - name: Install dependencies
-        run: |
-          pip install yfinance requests pytz --quiet
-
-      - name: Run KALKI Bot
+      - name: Install
+        run: pip install yfinance requests pytz --quiet
+      - name: Run Bot
         env:
           BOT_TOKEN: ${{ secrets.BOT_TOKEN }}
           CHAT_ID: ${{ secrets.CHAT_ID }}
-        run: |
-          python kalki_bot.py
+        run: python kalki_bot.py
