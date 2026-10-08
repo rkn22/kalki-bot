@@ -1,28 +1,39 @@
-name: bot
+name: KALKI V9 Bot
+
 on:
   schedule:
-    - cron: '*/15 3-9 * * 1-5'
+    - cron: '*/15 3-10 * * 1-5'  # Market time 9AM-3:30PM IST
   workflow_dispatch:
     inputs:
-      live:
-        description: 'LIVE report pathao'
-        required: false
-        type: boolean
-        default: false
+      mode:
+        description: 'Run Mode'
+        required: true
+        default: 'LIVE'
+        type: choice
+        options:
+          - LIVE
+          - TEST
 
 jobs:
-  build:
+  run-kalki:
     runs-on: ubuntu-latest
+    
     steps:
-      - uses: actions/checkout@v3
-      - uses: actions/setup-python@v4
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Setup Python
+        uses: actions/setup-python@v5
         with:
-          python-version: '3.10'
-      - name: Install deps
-      - name: Run bot
+          python-version: '3.11'
+
+      - name: Install dependencies
+        run: |
+          pip install yfinance requests pytz --quiet
+
+      - name: Run KALKI Bot
         env:
           BOT_TOKEN: ${{ secrets.BOT_TOKEN }}
           CHAT_ID: ${{ secrets.CHAT_ID }}
-          GEMINI_API_KEY: ${{ secrets.GEMINI_API_KEY }}
-          LIVE_MODE: ${{ inputs.live }}
-        run: python kalki_bot.py
+        run: |
+          python kalki_bot.py
