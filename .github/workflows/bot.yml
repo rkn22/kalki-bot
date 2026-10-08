@@ -3,6 +3,16 @@ on:
   schedule:
     - cron: '*/15 3-10 * * 1-5'
   workflow_dispatch:
+    inputs:
+      mode:
+        description: 'Mode'
+        required: true
+        default: 'LIVE'
+        type: choice
+        options:
+          - LIVE
+          - TEST
+
 jobs:
   run-kalki:
     runs-on: ubuntu-latest
