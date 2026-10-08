@@ -1,20 +1,22 @@
-name: Kalki Daily
+name: KALKI V8 GEMINI 3.8 FINAL
 on:
   schedule:
-    - cron: '15 3 * * 1-5'
-    - cron: '0 6 * * 1-5'
-    - cron: '45 9 * * 1-5'
+        - cron: '*/15 3-10 * * 1-5'
   workflow_dispatch:
 jobs:
-  bot:
+  trade:
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v3
-      - uses: actions/setup-python@v4
+            - uses: actions/checkout@v3
+            - uses: actions/setup-python@v4
         with:
-          python-version: '3.11'
-      - run: pip install -r requirements.txt
-      - run: python kalki_bot.py
+          python-version: '3.9'
+            - run: |
+          pip install --upgrade pip
+          pip install yfinance requests python-telegram-bot pytz
+            - run: python kalki_bot.py
         env:
           BOT_TOKEN: ${{ secrets.BOT_TOKEN }}
           CHAT_ID: ${{ secrets.CHAT_ID }}
+          GEMINI_API_KEY: ${{ secrets.GEMINI_API_KEY }}
+          SYMBOL: NIFTY
