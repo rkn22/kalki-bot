@@ -19,7 +19,6 @@ jobs:
         with:
           python-version: '3.10'
       - name: Install deps
-        run: pip install yfinance requests google-generativeai pytz --quiet
       - name: Run bot
         env:
           BOT_TOKEN: ${{ secrets.BOT_TOKEN }}
