@@ -85,9 +85,9 @@ else:
         f"🕯️ Pattern: {pattern}\n"
         f"📍 Zone: {zone} | 🎯 Acc: {acc}% SAFE ✅\n\n"
         f"💰 BUY 22500 CE {expiry_str} EXP @ ₹{ce} 💸\n"
-        f"🎯 TGT1: ₹{tgt1} TGT2: ₹{tgt2} 🤑\n"
+        f"🎯 TGT1: ₹{tgt1}     TGT2: ₹{tgt2} 🤑\n"
         f"🛑 SL: ₹{sl} ⚠️\n\n"
-        f"💵 Profit TGT1: Rs.{p1} TGT2: Rs.{p2} 💰\n"
+        f"💵 Profit TGT1: Rs.{p1}          TGT2: Rs.{p2} 💰\n"
         f"📅 Exp: {expiry_str} Tue | 1 LOT 📦"
     )
 
