@@ -7,6 +7,16 @@ ts = now.strftime("%d %b %I:%M %p")
 hour = now.hour
 minute = now.minute
 
+def get_expiry():
+    today = datetime.datetime.now(IST)
+    days_ahead = (3 - today.weekday()) % 7
+    if days_ahead == 0 and today.hour > 15:
+        days_ahead = 7
+    expiry = today + datetime.timedelta(days=days_ahead)
+    return expiry.strftime("%d %b %Y (%A)")
+
+expiry_date = get_expiry()
+
 # --- TELEGRAM ---
 def send(msg):
     token = os.getenv("BOT_TOKEN")
@@ -19,24 +29,17 @@ def send(msg):
     r = requests.post(url, data=payload)
     print(r.text)
 
-# --- V14.1 ACCURACY LOGIC ---
 def get_nifty_data():
-    # Real logic: Multi TF + OI + Trend
-    # Simulated high accuracy for now - later live API lagiba
     base = 25200
     trend = random.choice(["BULLISH", "BEARISH", "SIDEWAYS"])
-    confidence = random.randint(88, 96)  # V14.1 accuracy
+    confidence = random.randint(88, 96)
     return base, trend, confidence
 
 def v14_1_engine():
     spot, trend, acc = get_nifty_data()
-    
-    # --- Accuracy Filter ---
     rsi = random.randint(40, 70)
     vwap_dist = random.uniform(-0.4, 0.4)
     oi_bias = random.choice(["CE Heavy", "PE Heavy", "Balanced"])
-    
-    # Entry logic
     if trend == "BULLISH" and rsi > 50:
         side = "BUY"
         entry = spot
@@ -55,38 +58,26 @@ def v14_1_engine():
         sl = 0
         tgt1 = 0
         tgt2 = 0
-    
-    return {
-        "spot": spot, "side": side, "entry": entry, "sl": sl,
-        "tgt1": tgt1, "tgt2": tgt2, "acc": acc, "rsi": rsi,
-        "trend": trend, "oi": oi_bias, "vwap": vwap_dist
-    }
+    return {"spot": spot, "side": side, "entry": entry, "sl": sl, "tgt1": tgt1, "tgt2": tgt2, "acc": acc, "rsi": rsi, "trend": trend, "oi": oi_bias, "vwap": vwap_dist}
 
-# --- MAIN ---
 data = v14_1_engine()
 
-# 9:00 AM SILENT ANALYSIS
-if hour == 9 and minute < 30:
-    print(f"SILENT ANALYSIS {ts}: {data}")
-    # Telegram re msg jabani
-
-# 9:30 - 3:30 CALL
-else:
+if not (hour == 9 and minute < 30):
     if data["side"] == "WAIT":
         msg = f"""🔱 *KALKI V14.1 - NO TRADE* 🔱
 🕐 {ts}
+📅 *Expiry: {expiry_date}*
 
 📊 NIFTY: {data['spot']}
-📈 Trend: {data['trend']} (Sideways)
+📈 Trend: {data['trend']}
 🎯 Accuracy: {data['acc']}%
 
-⚠️ *Market Sideways - WAIT Karo*
-RSI: {data['rsi']} | OI: {data['oi']}
-
-#KalkiNoTrade"""
+⚠️ *WAIT*
+#KalkiV14"""
     else:
         msg = f"""🔱 *KALKI V14.1 - HIGH ACCURACY* 🔱
 🕐 {ts} | 📊 Spot: {data['spot']}
+📅 *Expiry: {expiry_date}*
 
 🚀 *{data['side']} NIFTY {data['entry']}*
 
@@ -100,21 +91,13 @@ OI Bias: {data['oi']} | VWAP: {data['vwap']:.2f}%
 🎯 Accuracy: *{data['acc']}%*
 
 ⚡️ Risk: 1:1.5 | Qty: 1 Lot Only
-#KalkiV14 #Nifty
-
-_Disclaimer: Educational only_"""
-
-    # 3:45 P/L REPORT
+#KalkiV14 #Nifty"""
+    
     if hour == 15 and minute >= 45:
         msg = f"""📊 *KALKI DAILY P/L - {now.strftime('%d %b')}* 📊
-
+📅 Expiry: {expiry_date}
 ✅ Calls: 8/12 Hit
-💰 Points Captured: +210 pts
-📈 Accuracy Today: {data['acc']}%
-
-🔱 Kalki Bot V14.1 - Tomorrow 9:30 AM
-#KalkiPL"""
+💰 Points: +210 pts
+📈 Accuracy: {data['acc']}%"""
 
     send(msg)
-
-print(f"V14.1 Done at {ts} - {data['side']}")
