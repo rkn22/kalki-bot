@@ -1,7 +1,24 @@
-# BHUL:
-- name: Run pip install requests
-  run: pip install requests
+name: Kalki 14.4
+on:
+  workflow_dispatch:
 
-# THIK - Eta lekha:
-- name: Install dependencies
-  run: pip install requests python-telegram-bot
+jobs:
+  run:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v3
+
+      - name: Setup Python
+        uses: actions/setup-python@v4
+        with:
+          python-version: '3.9'
+
+      - name: Install dependencies
+        run: pip install requests
+
+      - name: Run bot
+        env:
+          BOT_TOKEN: ${{ secrets.BOT_TOKEN }}
+          CHAT_ID: ${{ secrets.CHAT_ID }}
+        run: python bot.py
