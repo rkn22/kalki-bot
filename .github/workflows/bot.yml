@@ -1,24 +1,21 @@
-name: Kalki 14.4
+name: Kalki 14.4 Bot
+
 on:
+  schedule:
+    - cron: '15,55 3-10 * * 1-5'
+    - cron: '35 4-9 * * 1-5'
   workflow_dispatch:
 
 jobs:
-  run:
+  trade:
     runs-on: ubuntu-latest
     steps:
-      - name: Checkout code
-        uses: actions/checkout@v3
-
-      - name: Setup Python
-        uses: actions/setup-python@v4
+      - uses: actions/checkout@v3
+      - uses: actions/setup-python@v4
         with:
           python-version: '3.9'
-
-      - name: Install dependencies
-        run: pip install requests
-
-      - name: Run bot
+      - run: pip install requests
+      - run: python bot.py
         env:
           BOT_TOKEN: ${{ secrets.BOT_TOKEN }}
           CHAT_ID: ${{ secrets.CHAT_ID }}
-        run: python bot.py
