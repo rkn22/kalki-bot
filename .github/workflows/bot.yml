@@ -1,17 +1,24 @@
-name: Kalki V14.1
+name: Kalki V14.1 Bot
+
 on:
   schedule:
-    - cron: '30 3 * * 1-5'   # 9:00 SILENT
-    - cron: '0,30 4-9 * * 1-5' # 9:30 - 3:00 CALLS
-    - cron: '0 10 * * 1-5'   # 3:30 CALL
-    - cron: '15 10 * * 1-5'  # 3:45 P/L REPORT
+    - cron: '30 3 * * 1-5'   # 9:00 AM IST Silent
+    - cron: '0,30 4-9 * * 1-5' # 9:30-3:00 IST CALL
+    - cron: '0 10 * * 1-5'   # 3:30 PM IST CALL
+    - cron: '15 10 * * 1-5'  # 3:45 PM P/L
   workflow_dispatch:
+
 jobs:
   run:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v3
       - uses: actions/setup-python@v4
-        with: {python-version: '3.9'}
+        with:
+          python-version: '3.10'
       - run: pip install requests
-      - run: python kalki_bot.py
+      - name: Run python kalki_bot.py
+        env:
+          BOT_TOKEN: ${{ secrets.BOT_TOKEN }}
+          CHAT_ID: ${{ secrets.CHAT_ID }}
+        run: python kalki_bot.py
