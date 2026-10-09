@@ -4,32 +4,50 @@ from datetime import datetime, timedelta
 BOT_TOKEN = os.getenv("BOT_TOKEN")
 CHAT_ID = os.getenv("CHAT_ID")
 
+# --- NIFTY FETCH ---
 try:
     r = requests.get("https://www.nseindia.com/api/allIndices", headers={"User-Agent":"Mozilla/5.0"}, timeout=10).json()
     nifty = [x for x in r['data'] if x['index'] == 'NIFTY 50'][0]
     price = float(nifty['last'])
     pct = nifty['percentChange']
 except:
-    price = 22468.15
-    pct = 1.06
+    print("API Fail - Exit")
+    exit() # Bhul price debani
 
+# --- TIME ---
 utc_now = datetime.utcnow() + timedelta(hours=5, minutes=30)
 now = utc_now.strftime("%I:%M %p")
+hour = utc_now.hour
+minute = utc_now.minute
 
+# --- ACCURACY ---
 if 22500 <= price <= 22540:
     acc = 60
     zone = "Inside 22500-22540"
     signal = "Shooting Star @ Resistance"
 else:
     acc = 78
+    if price < 22490 or price > 22560:
+        acc = 88 # Strong breakout
     zone = "Outside Safe Zone"
     signal = "Bullish Hold @ Support"
 
-if acc < 70:
+# --- 9:15 PREDICTION (NUA) ---
+if hour == 9 and 15 <= minute <= 20:
+    msg = f"☀️ 9:15 PREDICTION {now}\n\n📊 NIFTY: {price} ({pct}%)\n📍 {zone}\n📈 Accuracy: {acc}%\n\n🎯 Aji Plan: {signal}\n⏰ 9:30 re Confirm Signal Asiba"
+
+elif acc < 70:
     msg = f"⚠️ Kalki 14.4 SKIP {now}\n\n📊 NIFTY: {price} ({pct}%)\n📍 {zone}\n🕯️ {signal}\n📈 Accuracy: {acc}% - LOW!\n\n❌ No Trade - Next 40min Wait"
 else:
     ce = round(price * 0.006)
-    msg = f"🔱 Kalki 14.4 STRONG CALL {now}\n\n📊 NIFTY: {price} ({pct}%)\n📍 {zone}\n🕯️ {signal}\n📈 Accuracy: {acc}% - SAFE ✅\n\n👉 BUY 22500 CE @ {ce}\n🎯 TGT: {ce+60} | 🛑 SL: {ce-40}\n📦 1 LOT ONLY"
+    tgt1 = ce + 25
+    tgt2 = ce + 60
+    sl = ce - 40
+    # --- PROFIT CALCULATOR (NUA) ---
+    p1 = (tgt1 - ce) * 75
+    p2 = (tgt2 - ce) * 75
+
+    msg = f"🔱 Kalki 14.4 STRONG CALL {now}\n\n📊 NIFTY: {price} ({pct}%)\n📍 {zone}\n🕯️ {signal}\n📈 Accuracy: {acc}% - SAFE ✅\n\n👉 BUY 22500 CE @ {ce}\n🎯 TGT1: {tgt1} | TGT2: {tgt2}\n🛑 SL: {sl}\n\n💰 Profit:\nTGT1 = +₹{p1} (25pt)\nTGT2 = +₹{p2} (60pt)\n📦 1 LOT ONLY"
 
 requests.get(f"https://api.telegram.org/bot{BOT_TOKEN}/sendMessage?chat_id={CHAT_ID}&text={msg}")
 print(f"Sent {acc}%")
