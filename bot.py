@@ -47,4 +47,7 @@ else:
     sl = ce - 40
     p1 = (tgt1 - ce) * 75
     p2 = (tgt2 - ce) * 75
-    msg = f"🔱 Kalki 14.4 STRONG CALL {now}\n\n📊 NIFTY: {
+    msg = f"🔱 Kalki 14.4 STRONG CALL {now}\n\n📊 NIFTY: {price} ({pct}%)\n📍 {zone}\n🕯️ {signal}\n📈 Accuracy: {acc}% - SAFE ✅\n\n👉 BUY 22500 CE {expiry_str} EXP @ {ce}\n🎯 TGT1: {tgt1} | TGT2: {tgt2}\n🛑 SL: {sl}\n\n💰 Profit:\nTGT1 = ₹{p1} (25pt)\nTGT2 = ₹{p2} (60pt)\n📅 Exp: {expiry_str} Tue\n📦 1 LOT ONLY"
+
+requests.get(f"https://api.telegram.org/bot{BOT_TOKEN}/sendMessage?chat_id={CHAT_ID}&text={msg}")
+print(f"Sent {acc}% - {expiry_str}")
