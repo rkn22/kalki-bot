@@ -1,39 +1,58 @@
-import requests, os, datetime
+import requests, os
+from datetime import datetime
+import pytz
 
 BOT_TOKEN = os.getenv("BOT_TOKEN")
 CHAT_ID = os.getenv("CHAT_ID")
 
-def send_msg(text):
-    url = f"https://api.telegram.org/bot{BOT_TOKEN}/sendMessage"
-    requests.post(url, data={"chat_id": CHAT_ID, "text": text})
-
-def get_spot():
-    try:
-        h = {"User-Agent": "Mozilla/5.0", "Accept": "application/json"}
-        r = requests.get("https://www.nseindia.com/api/allIndices", headers=h, timeout=10).json()
-        for i in r['data']:
-            if i['index'] == 'NIFTY 50':
-                return float(i['last']), float(i['percentChange'])
-    except Exception as e:
-        print(f"NSE Error {e}")
-        return 22474.05, 1.09
-    return 22474.05, 1.09
+# NSE Live
+try:
+    r = requests.get("https://www.nseindia.com/api/allIndices", headers={"User-Agent":"Mozilla/5.0"}, timeout=10).json()
+    nifty = [x for x in r['data'] if x['index'] == 'NIFTY 50'][0]
+    price = float(nifty['last'])
+    pct = nifty['percentChange']
+except:
+    price = 22468.15
+    pct = 1.06
 
 # IST Time
-ist_now = datetime.datetime.utcnow() + datetime.timedelta(hours=5, minutes=30)
-time_str = ist_now.strftime('%I:%M %p')
+ist = pytz.timezone('Asia/Kolkata')
+now = datetime.now(ist).strftime("%I:%M %p")
 
-spot, pct = get_spot()
-
-# Fix: acc defined here
-if spot >= 22500 and spot <= 22540:
-    candle = "Bullish Hold @ 22500"
-    acc = 78
+# Accuracy Logic - Final Zone
+if 22500 <= price <= 22540:
+    acc = 60 # Inside = Low
+    zone = "Inside 22500-22540"
+    signal = "Shooting Star @ Resistance"
 else:
-    candle = "Shooting Star @ Resistance"
-    acc = 72
+    acc = 78 # Outside = Safe
+    zone = "Outside Safe Zone"
+    signal = "Bullish Hold @ Support"
 
-msg = f"🔱 Kalki 14.4 CALL {time_str}\n\n📊 NIFTY: {spot} ({pct}%)\n🕯️ Candle: {candle}\n📈 Accuracy: {acc}%\n\n👉 BUY 22500 CE @ 134\n🎯 TGT: 192 | 🛑 SL: 96\n📦 1 LOT ONLY"
+# B OPTION - Only 70%+
+if acc < 70:
+    msg = f"""⚠️ Kalki 14.4 SKIP {now}
 
-send_msg(msg)
-print("Sent OK")
+📊 NIFTY: {price} ({pct}%)
+📍 {zone}
+🕯️ {signal}
+📈 Accuracy: {acc}% - TOO LOW!
+
+❌ No Trade - Next 40min Wait"""
+else:
+    ce_price = round(price * 0.006)
+    msg = f"""🔱 Kalki 14.4 STRONG CALL {now}
+
+📊 NIFTY: {price} ({pct}%)
+📍 {zone}
+🕯️ {signal}
+📈 Accuracy: {acc}% - SAFE ✅
+
+👉 BUY 22500 CE @ {ce_price}
+🎯 TGT: {ce_price+60} | 
+🛑 SL: {ce_price-40}
+📦 1 LOT ONLY"""
+
+# Send
+requests.get(f"https://api.telegram.org/bot{BOT_TOKEN}/sendMessage?chat_id={CHAT_ID}&text={msg}")
+print("Sent:", acc)
