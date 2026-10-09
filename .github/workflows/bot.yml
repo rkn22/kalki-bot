@@ -1,18 +1,33 @@
-name: Kalki V14.4
+name: Kalki 30Min
 on:
-  workflow_dispatch:
   schedule:
+    - cron: '30 3 * * 1-5'
     - cron: '0 4 * * 1-5'
+    - cron: '30 4 * * 1-5'
+    - cron: '0 5 * * 1-5'
+    - cron: '30 5 * * 1-5'
+    - cron: '0 6 * * 1-5'
+    - cron: '30 6 * * 1-5'
+    - cron: '0 7 * * 1-5'
+    - cron: '30 7 * * 1-5'
+    - cron: '0 8 * * 1-5'
+    - cron: '30 8 * * 1-5'
+    - cron: '0 9 * * 1-5'
+    - cron: '30 9 * * 1-5'
+  workflow_dispatch:
+concurrency:
+  group: kalki
+  cancel-in-progress: true
 jobs:
-  trade:
+  run:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v3
       - uses: actions/setup-python@v4
         with:
-          python-version: '3.10'
+          python-version: '3.9'
       - run: pip install requests
-      - run: python kalki_bot.py
+      - run: python bot.py
         env:
-          TELEGRAM_TOKEN: ${{ secrets.BOT_TOKEN }}
-          TELEGRAM_CHAT_ID: ${{ secrets.CHAT_ID }}
+          BOT_TOKEN: ${{ secrets.BOT_TOKEN }}
+          CHAT_ID: ${{ secrets.CHAT_ID }}
