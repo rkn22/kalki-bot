@@ -1,4 +1,4 @@
-name: Kalki 30Min
+name: Kalki 14.4
 on:
   schedule:
     - cron: '30 3 * * 1-5'
@@ -15,9 +15,11 @@ on:
     - cron: '0 9 * * 1-5'
     - cron: '30 9 * * 1-5'
   workflow_dispatch:
+
 concurrency:
-  group: kalki
+  group: kalki-14-4
   cancel-in-progress: true
+
 jobs:
   run:
     runs-on: ubuntu-latest
