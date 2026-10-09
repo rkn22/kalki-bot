@@ -1,35 +1,7 @@
-name: Kalki 14.4
-on:
-  schedule:
-    - cron: '30 3 * * 1-5'
-    - cron: '0 4 * * 1-5'
-    - cron: '30 4 * * 1-5'
-    - cron: '0 5 * * 1-5'
-    - cron: '30 5 * * 1-5'
-    - cron: '0 6 * * 1-5'
-    - cron: '30 6 * * 1-5'
-    - cron: '0 7 * * 1-5'
-    - cron: '30 7 * * 1-5'
-    - cron: '0 8 * * 1-5'
-    - cron: '30 8 * * 1-5'
-    - cron: '0 9 * * 1-5'
-    - cron: '30 9 * * 1-5'
-  workflow_dispatch:
+# BHUL:
+- name: Run pip install requests
+  run: pip install requests
 
-concurrency:
-  group: kalki-14-4
-  cancel-in-progress: true
-
-jobs:
-  run:
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@v3
-      - uses: actions/setup-python@v4
-        with:
-          python-version: '3.9'
-      - run: pip install requests
-      - run: python bot.py
-        env:
-          BOT_TOKEN: ${{ secrets.BOT_TOKEN }}
-          CHAT_ID: ${{ secrets.CHAT_ID }}
+# THIK - Eta lekha:
+- name: Install dependencies
+  run: pip install requests python-telegram-bot
