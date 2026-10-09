@@ -1,5 +1,1 @@
-yfinance
 requests
-pytz
-pandas
-python-telegram-bot
