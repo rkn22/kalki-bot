@@ -9,7 +9,8 @@ minute = now.minute
 
 def get_expiry():
     today = datetime.datetime.now(IST)
-    days_ahead = (3 - today.weekday()) % 7
+    # TUESDAY = 1 (NSE New Rule)
+    days_ahead = (1 - today.weekday()) % 7
     if days_ahead == 0 and today.hour > 15:
         days_ahead = 7
     expiry = today + datetime.timedelta(days=days_ahead)
@@ -19,8 +20,8 @@ expiry_date = get_expiry()
 
 # --- TELEGRAM ---
 def send(msg):
-    token = os.getenv("BOT_TOKEN")
-    chat = os.getenv("CHAT_ID")
+    token = os.getenv("TELEGRAM_TOKEN") or os.getenv("BOT_TOKEN")
+    chat = os.getenv("TELEGRAM_CHAT_ID") or os.getenv("CHAT_ID")
     if not token or not chat:
         print(f"ERROR: Token={bool(token)} Chat={bool(chat)}")
         return
@@ -30,7 +31,7 @@ def send(msg):
     print(r.text)
 
 def get_nifty_data():
-    base = 25200
+    base = 22320 # Tuma live spot
     trend = random.choice(["BULLISH", "BEARISH", "SIDEWAYS"])
     confidence = random.randint(88, 96)
     return base, trend, confidence
@@ -62,9 +63,12 @@ def v14_1_engine():
 
 data = v14_1_engine()
 
-if not (hour == 9 and minute < 30):
+# 9:00-9:29 skip, 9:30 ru send
+if hour == 9 and minute < 30:
+    print("SKIP - Pre 9:30")
+else:
     if data["side"] == "WAIT":
-        msg = f"""🔱 *KALKI V14.1 - NO TRADE* 🔱
+        msg = f"""🔱 *KALKI V14.4 - NO TRADE* 🔱
 🕐 {ts}
 📅 *Expiry: {expiry_date}*
 
@@ -75,7 +79,7 @@ if not (hour == 9 and minute < 30):
 ⚠️ *WAIT*
 #KalkiV14"""
     else:
-        msg = f"""🔱 *KALKI V14.1 - HIGH ACCURACY* 🔱
+        msg = f"""🔱 *KALKI V14.4 - HIGH ACCURACY* 🔱
 🕐 {ts} | 📊 Spot: {data['spot']}
 📅 *Expiry: {expiry_date}*
 
@@ -85,7 +89,7 @@ if not (hour == 9 and minute < 30):
 🟢 TGT1: {data['tgt1']}
 🟢 TGT2: {data['tgt2']}
 
-📈 *V14.1 Stats:*
+📈 *V14.4 Stats:*
 Trend: {data['trend']} | RSI: {data['rsi']}
 OI Bias: {data['oi']} | VWAP: {data['vwap']:.2f}%
 🎯 Accuracy: *{data['acc']}%*
