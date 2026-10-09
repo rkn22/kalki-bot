@@ -10,7 +10,7 @@ try:
     price = float(nifty['last'])
     pct = nifty['percentChange']
 except:
-    print("API Fail - No Trade")
+    print("API Fail")
     exit()
 
 utc_now = datetime.utcnow() + timedelta(hours=5, minutes=30)
@@ -18,7 +18,6 @@ now = utc_now.strftime("%I:%M %p")
 hour = utc_now.hour
 minute = utc_now.minute
 
-# Expiry - Next Tuesday
 days_ahead = (1 - utc_now.weekday()) % 7
 if days_ahead == 0 and utc_now.hour >= 16:
     days_ahead = 7
@@ -37,9 +36,9 @@ else:
     signal = "Bullish Hold @ Support"
 
 if hour == 9 and 15 <= minute <= 20:
-    msg = f"☀️ 9:15 PREDICTION {now}\n\n📊 NIFTY: {price} ({pct}%)\n📅 Expiry: {expiry_str} (Tuesday)\n📈 Acc: {acc}%\n🎯 {signal}"
+    msg = f"9:15 PREDICTION {now}\nNIFTY: {price} ({pct}%)\nExpiry: {expiry_str} Tue\nAcc: {acc}%\nPlan: {signal}"
 elif acc < 70:
-    msg = f"⚠️ Kalki 14.4 SKIP {now}\n\n📊 NIFTY: {price} ({pct}%)\n📍 {zone}\n📈 Acc: {acc}% LOW\n❌ No Trade"
+    msg = f"SKIP {now}\nNIFTY: {price} ({pct}%)\n{zone}\nAcc: {acc}% LOW\nNo Trade"
 else:
     ce = round(price * 0.006)
     tgt1 = ce + 25
@@ -47,7 +46,16 @@ else:
     sl = ce - 40
     p1 = (tgt1 - ce) * 75
     p2 = (tgt2 - ce) * 75
-    msg = f"🔱 Kalki 14.4 STRONG CALL {now}\n\n📊 NIFTY: {price} ({pct}%)\n📍 {zone}\n🕯️ {signal}\n📈 Accuracy: {acc}% - SAFE ✅\n\n👉 BUY 22500 CE {expiry_str} EXP @ {ce}\n🎯 TGT1: {tgt1} | TGT2: {tgt2}\n🛑 SL: {sl}\n\n💰 Profit:\nTGT1 = ₹{p1} (25pt)\nTGT2 = ₹{p2} (60pt)\n📅 
+    msg = (
+        f"KALKI 14.4 STRONG CALL {now}\n"
+        f"NIFTY: {price} ({pct}%)\n"
+        f"{zone} | {signal}\n"
+        f"Acc: {acc}% SAFE\n\n"
+        f"BUY 22500 CE {expiry_str} EXP @ {ce}\n"
+        f"TGT1: {tgt1} | TGT2: {tgt2}\n"
+        f"SL: {sl}\n\n"
+        f"Profit TGT1: Rs.{p1} | TGT2: Rs.{p2}\n"
+    )
 
 requests.get(f"https://api.telegram.org/bot{BOT_TOKEN}/sendMessage?chat_id={CHAT_ID}&text={msg}")
-print(f"Sent {acc}% - {expiry_str}")
+print(f"Sent {acc}% {expiry_str}")
