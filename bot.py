@@ -96,3 +96,51 @@ OI Bias: {sig['oi']} | Change: {sig['pct']:.2f}%
 
 if __name__ == "__main__":
     main()
+# ======= EHI FUNCTION TALE ADD KARA =======
+def track_real_time(entry, strike, action, spot_entry):
+    """Entry pare real-time update"""
+    sl = entry * 0.75
+    tgt1 = entry + 62  # 130->192
+    last_price = entry
+    
+    for i in range(12):  # 1 ghanta track (12 x 5min)
+        time.sleep(300)  # 5 min wait
+        spot, pct = get_nifty_data()
+        
+        # CE price estimate (simple delta)
+        diff = spot - spot_entry
+        curr_premium = entry + (diff * 0.6)  # 0.6 delta
+        
+        # Candle check
+        candle_name, _ = get_candle_pattern(spot)
+        
+        pnl = (curr_premium - entry) * 75
+        pnl_percent = ((curr_premium - entry)/entry)*100
+        
+        # Trail SL
+        if curr_premium > entry + 15:
+            sl = entry + 5  # Cost to cost
+        if curr_premium > entry + 30:
+            sl = entry + 20 # Profit lock
+        
+        msg = f"""📊 REAL-TIME UPDATE {datetime.datetime.now().strftime('%H:%M')}
+
+🔹 NIFTY: {spot_entry} -> {spot} ({'+' if spot>spot_entry else ''}{spot-spot_entry:.0f})
+🔹 {action} {strike}: {entry} -> {curr_premium:.0f} ({pnl_percent:+.1f}%)
+💰 P&L: {pnl:.0f} Rs | Lot: 1
+🕯️ {candle_name}
+🛑 Trail SL: {sl:.0f} | 🎯 TGT: {tgt1}
+
+{'✅ TGT HIT! BOOK 50%!' if curr_premium >= tgt1 else '⏳ HOLD' if curr_premium > sl else '❌ SL HIT! EXIT!'}
+"""
+        bot.send_message(CHAT_ID, msg)
+        
+        if curr_premium >= tgt1 or curr_premium <= sl:
+            break
+        
+        last_price = curr_premium
+
+# ======= send_call() bhitare last re eita add kara =======
+# send_call() function ra sesa line re:
+# bot.send_message() pare
+    track_real_time(entry, strike, action, spot)
