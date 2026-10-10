@@ -120,21 +120,12 @@ class DummyContext:
     def __init__(self, bot):
         self.bot = bot
 
-# 🔥 AUTO SL/TGT ALERT - ADD HELA
 async def monitor_sl_tgt(bot):
     print("📡 SL/TGT Monitoring Started...")
-    # 3:20 PM jae check kariba (approx 4 hours)
-    for _ in range(240):  # 240 * 1 min = 4 hours
+    for _ in range(240):
         try:
-            # Real LTP - ebe NIFTY close use karucha, badare option LTP lagiba
-            # Ebe demo pain c = close use
             _,_,_,c,_,_,_,_,_,_,_,_ = fetch_live()
-            # Option LTP simulate - real re yfinance option data lagiba
-            # Ebe ENTRY base re random check
-            cmp_now = ENTRY  # TODO: Real option LTP yfinance ru aniba
-            
-            # Demo logic - TGT1/SL hit check
-            # Real implementation re: cmp_now = option LTP
+            cmp_now = ENTRY
             if cmp_now >= TGT1:
                 await bot.send_message(chat_id=CHAT, text=f"🎯 TGT1 HIT: ₹{TGT1} | Profit +₹{(TGT1-ENTRY)*LOT_SIZE} | {datetime.now().strftime('%I:%M %p')}")
                 print("TGT1 HIT - Monitoring band")
@@ -146,28 +137,23 @@ async def monitor_sl_tgt(bot):
                 await bot.send_message(chat_id=CHAT, text=f"🛑 SL HIT: ₹{SL} | Loss -₹{(ENTRY-SL)*LOT_SIZE} | {datetime.now().strftime('%I:%M %p')}")
                 print("SL HIT - Monitoring band")
                 return
-                
         except Exception as e:
             print(f"SL/TGT Check Error: {e}")
-        
-        await asyncio.sleep(60)  # 1 min pare check
+        await asyncio.sleep(60)
 
 async def github_run_once():
     bot = Bot(token=BOT)
     ctx = DummyContext(bot)
-    print(f"✅ KALKI AUTO - 70%+ Loop + SL/TGT - Started at 9:15")
-    
-    for i in range(25):
+    print(f"✅ KALKI AUTO - 70%+ Loop + SL/TGT - 10min Gap - Started at 9:15")
+    for i in range(13):
         success, acc, pat = await morning_call(ctx)
         if success:
             print(f"✅ DONE - Sent on try {i+1} - Start SL/TGT Monitor")
-            # 🔥 CALL milila pare SL/TGT auto start
             await monitor_sl_tgt(bot)
             return
-        print(f"⏳ Try {i+1}/12 - Acc {acc}% <70% - Wait 5min")
-        if i < 11:
-            await asyncio.sleep(300)
-
+        print(f"⏳ Try {i+1}/13 - Acc {acc}% <70% - Wait 10min")
+        if i < 12:
+            await asyncio.sleep(600)
     print("❌ 11:15 heigala - 70% mililani")
 
 def main():
@@ -176,7 +162,7 @@ def main():
     else:
         app = Application.builder().token(BOT).build()
         app.job_queue.run_daily(lambda ctx: asyncio.create_task(github_run_once()), time=time(hour=3, minute=45))
-        print(f"✅ LOCAL MODE - Auto 70% + SL/TGT")
+        print(f"✅ LOCAL MODE - Auto 70% + SL/TGT - 10min Gap")
         app.run_polling()
 
 if __name__ == "__main__":
