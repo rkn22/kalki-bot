@@ -1,13 +1,13 @@
 name: Kalki 9AM PreMarket
 on:
   schedule:
-    - cron: '30 3 * * 1-5'  # 9:00 AM IST = 3:30 UTC
+    - cron: '30 3 * * 1-5'  # 9:00 AM IST
   workflow_dispatch:
 
 jobs:
   build:
     runs-on: ubuntu-latest
-    timeout-minutes: 145  # 9:00 to 11:25
+    timeout-minutes: 145
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-python@v5
@@ -19,7 +19,7 @@ jobs:
           BOT_TOKEN: ${{ secrets.BOT_TOKEN }}
           CHAT_ID: ${{ secrets.CHAT_ID }}
         run: |
-          python -c "import json; json.dump({'acc':75,'accuracy':75,'pat':'PreMarket','pattern':'PreMarket','price':25220,'nifty_price':25220,'bank_price':57200,'vix':13.2,'time':'09:00:00','bot_signal':'WAIT','signal':'WAIT'}, open('data.json','w')); print('✅ data.json pre-created for Master')"
+          python -c 'import json; json.dump({"acc":75,"accuracy":75,"pat":"PreMarket","pattern":"PreMarket","price":25220,"nifty_price":25220,"bank_price":57200,"vix":13.2,"time":"09:00:00","bot_signal":"WAIT","signal":"WAIT"}, open("data.json","w"))'
           python bot.py &
           sleep 25
           python master_live.py
