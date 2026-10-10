@@ -1,25 +1,22 @@
-name: Kalki 9AM PreMarket
+name: build
 on:
-  schedule:
-    - cron: '30 3 * * 1-5'  # 9:00 AM IST
   workflow_dispatch:
-
+  schedule:
+    - cron: '15 3 * * 1-5'
 jobs:
-  build:
+  run:
     runs-on: ubuntu-latest
-    timeout-minutes: 145
+    timeout-minutes: 8
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-python@v5
         with:
           python-version: '3.11'
-      - run: pip install -r requirements.txt
-      - name: Run Bot + Master 2-Way
+      - run: pip install python-telegram-bot yfinance requests
+      - name: Run
         env:
           BOT_TOKEN: ${{ secrets.BOT_TOKEN }}
           CHAT_ID: ${{ secrets.CHAT_ID }}
         run: |
-          python -c 'import json; json.dump({"acc":75,"accuracy":75,"pat":"PreMarket","pattern":"PreMarket","price":25220,"nifty_price":25220,"bank_price":57200,"vix":13.2,"time":"09:00:00","bot_signal":"WAIT","signal":"WAIT"}, open("data.json","w"))'
-          python bot.py &
-          sleep 25
+          python bot.py
           python master_live.py
