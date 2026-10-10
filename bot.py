@@ -1,5 +1,6 @@
 import os, asyncio, json
 from datetime import time, datetime
+from telegram import Bot
 from telegram.ext import Application, CommandHandler
 
 BOT = os.getenv("BOT_TOKEN")
@@ -14,7 +15,7 @@ COST = ENTRY * LOT_SIZE
 BAL = CAPITAL - COST
 LOTS = 1
 STATE_FILE = "state.json"
-MIN_ACCURACY = 70  # <-- NEW ADD ONLY
+MIN_ACCURACY = 70
 
 def load_state():
     try:
@@ -45,7 +46,7 @@ def check_candle_pattern(o,h,l,c, prev_o, prev_c, vol, avg_vol):
 def check_double_supertrend(st_15, st_5):
     return st_15 == "BUY" and st_5 == "BUY"
 
-def calculate_accuracy(candle_ok, st15_ok, st5_ok, vix_ok, pcr_ok, vol_ok):  # <-- NEW ADD ONLY
+def calculate_accuracy(candle_ok, st15_ok, st5_ok, vix_ok, pcr_ok, vol_ok):
     score = 0
     if candle_ok: score += 30
     if st15_ok: score += 25
@@ -82,7 +83,6 @@ Qty: {LOT_SIZE} | Paper Trading Only
 /today /pnl /strike 25200"""
 
 # ================= FUNCTIONS - SAME =================
-
 async def morning_call(context):
     s = load_state()
     today = datetime.now().strftime("%d-%m-%Y")
@@ -90,27 +90,22 @@ async def morning_call(context):
         s = {"date": today, "first_sent": False, "second_sent": False, "hit": False}
     if s["first_sent"]:
         return
-
     o,h,l,c = 25180, 25240, 25170, 25220
     prev_o, prev_c = 25200, 25160
     vol, avg_vol = 150000, 100000
     st15, st5 = "BUY", "BUY"
     vix, pcr = 13.2, 1.05
-
     candle = check_candle_pattern(o,h,l,c, prev_o, prev_c, vol, avg_vol)
     st15_ok = st15 == "BUY"
     st5_ok = st5 == "BUY"
     vix_ok = vix < 14
     pcr_ok = pcr > 1.0
     vol_ok = vol > avg_vol
-
-    accuracy = calculate_accuracy(candle["signal"], st15_ok, st5_ok, vix_ok, pcr_ok, vol_ok)  # <-- NEW
-    all_match = candle["signal"] and st15_ok and st5_ok and vix_ok and pcr_ok and vol_ok      # <-- NEW
-
-    if not (all_match and 70 <= accuracy <= 100):  # <-- NEW FILTER ONLY
+    accuracy = calculate_accuracy(candle["signal"], st15_ok, st5_ok, vix_ok, pcr_ok, vol_ok)
+    all_match = candle["signal"] and st15_ok and st5_ok and vix_ok and pcr_ok and vol_ok
+    if not (all_match and 70 <= accuracy <= 100):
         print(f"SKIP - Acc: {accuracy}% - Match: {all_match} - Need 70-100%")
         return
-
     await context.bot.send_message(chat_id=CHAT, text=build_msg(1, "09:15 AM", f"{candle['pattern']} {accuracy}%"))
     s["first_sent"] = True
     s["date"] = today
@@ -177,16 +172,32 @@ async def cmd_pnl(update, context):
 async def cmd_strike(update, context):
     await update.message.reply_text(f"Strike 25200 CE | LTP {ENTRY} | 1 LOT = {COST} within 10000")
 
-async def main():
-    app = Application.builder().token(BOT).build()
-    app.job_queue.run_daily(morning_call, time=time(hour=3, minute=45))
-    app.job_queue.run_repeating(sl_tgt_check, interval=60, first=10)
-    app.job_queue.run_daily(auto_pnl, time=time(hour=10, minute=0))
-    app.add_handler(CommandHandler("today", cmd_today))
-    app.add_handler(CommandHandler("pnl", cmd_pnl))
-    app.add_handler(CommandHandler("strike", cmd_strike))
-    print(f"✅ FINAL BOT.PY - {CAPITAL} - {LOTS} LOT - 70-100% Acc Filter - Lock")
-    await app.run_polling()
+# ================= FIXED MAIN - NO ERROR =================
+class DummyContext:
+    def __init__(self, bot):
+        self.bot = bot
+
+async def github_run_once():
+    bot = Bot(token=BOT)
+    ctx = DummyContext(bot)
+    print(f"✅ FINAL BOT.PY - {CAPITAL} - {LOTS} LOT - 70-100% Acc Filter - Lock - GitHub Mode")
+    await morning_call(ctx)
+
+def main():
+    # GitHub Actions re chalile direct one-time run
+    if os.getenv("GITHUB_ACTIONS") == "true":
+        asyncio.run(github_run_once())
+    else:
+        # Local PC re polling mode
+        app = Application.builder().token(BOT).build()
+        app.job_queue.run_daily(morning_call, time=time(hour=3, minute=45))
+        app.job_queue.run_repeating(sl_tgt_check, interval=60, first=10)
+        app.job_queue.run_daily(auto_pnl, time=time(hour=10, minute=0))
+        app.add_handler(CommandHandler("today", cmd_today))
+        app.add_handler(CommandHandler("pnl", cmd_pnl))
+        app.add_handler(CommandHandler("strike", cmd_strike))
+        print(f"✅ FINAL BOT.PY - {CAPITAL} - {LOTS} LOT - 70-100% Acc Filter - Lock - Local Mode")
+        app.run_polling()
 
 if __name__ == "__main__":
-    asyncio.run(main())
+    main()
