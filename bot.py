@@ -1,21 +1,31 @@
-import requests, os
-from telegram.ext import Application, CommandHandler
+import os, threading, requests
+from flask import Flask
+from telegram import Update
+from telegram.ext import Application, CommandHandler, ContextTypes
 
-BOT_TOKEN=os.getenv("BOT_TOKEN")
-CHAT_ID=os.getenv("CHAT_ID")
+BOT_TOKEN = os.getenv("BOT_TOKEN")
+CHAT_ID = os.getenv("CHAT_ID")
 
-def get_ltp(s=25200):
+# --- 1. RENDER LIVE RAKHIBA PAIN FLASK ---
+keep_app = Flask('')
+@keep_app.route('/')
+def home(): return "🔱 KALKI 15.0 LIVE 🟢"
+def run_flask(): keep_app.run(host='0.0.0.0', port=8080)
+
+# --- 2. LIVE NSE PRICE ---
+def get_ltp(strike=25200):
     try:
-        ss=requests.Session()
-        ss.get("https://www.nseindia.com",headers={"User-Agent":"Mozilla/5.0"},timeout=10)
-        d=ss.get("https://www.nseindia.com/api/option-chain-indices?symbol=NIFTY",headers={"User-Agent":"Mozilla/5.0","Referer":"https://www.nseindia.com/option-chain"},timeout=10).json()
+        s = requests.Session()
+        s.get("https://www.nseindia.com", headers={"User-Agent":"Mozilla/5.0"}, timeout=10)
+        d = s.get("https://www.nseindia.com/api/option-chain-indices?symbol=NIFTY", headers={"User-Agent":"Mozilla/5.0","Referer":"https://www.nseindia.com/option-chain"}, timeout=10).json()
         for x in d['records']['data']:
-            if x.get('strikePrice')==s and 'CE' in x:
-                return x['CE']['lastPrice']
+            if x.get('strikePrice') == strike and 'CE' in x:
+                return float(x['CE']['lastPrice'])
+        return None
     except: return None
 
-async def today(update,ctx):
-    await update.message.reply_text("""🔱 KALKI 15.0 - 1ST SUPER-ACCURATE EDUCATIONAL CALL 🔱
+# --- 3. TODAY CALL ---
+MSG = """🔱 KALKI 15.0 - 1ST SUPER-ACCURATE EDUCATIONAL CALL 🔱
 13 Oct 09:15 AM 🚀
 
 INSTRUMENT: NIFTY 50 25200 CE - 13 OCT (Tuesday Weekly Expiry)
@@ -42,36 +52,59 @@ DOUBLE SUPERTREND:
 FILTERS: VIX 13.2<13.5 ✅ PCR 1.05 ✅ OI Bullish ✅
 
 📦 1 LOT Paper Only
-⚠️ Educational Only - Not SEBI Registered
-/today /pnl /strike 25200""")
+⚠️ Educational Only - Not SEBI Registered"""
 
-async def pnl(update,ctx):
-    ltp=get_ltp() or 2.5
-    await update.message.reply_text(f"📊 PNL - 25200 CE\nEntry: 120\nLTP: {ltp}\nPnL: ₹{(ltp-120)*130}\nSL 78 / TGT 155,195")
+async def today(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    await update.message.reply_text(MSG)
 
-async def strike(update,ctx):
-    if not ctx.args:
-        await update.message.reply_text("Use: /strike 25200"); return
-    s=int(ctx.args[0]); ltp=get_ltp(s)
-    await update.message.reply_text(f"NIFTY {s} CE LTP: ₹{ltp}")
+async def pnl(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    ltp = get_ltp(25200) or 0
+    pnl_rs = (ltp - 120) * 75
+    await update.message.reply_text(f"📊 LIVE PNL\n25200 CE Entry: 120\nLTP: {ltp}\nPnL: ₹{pnl_rs}\nSL 78 | TGT 155/195")
 
-async def check_price(context):
-    ltp=get_ltp(25200)
-    if not ltp or not CHAT_ID: return
-    if ltp <=78:
-        await context.bot.send_message(chat_id=CHAT_ID, text=f"🛑 SL HIT ALERT!\n25200 CE LTP: ₹{ltp}\nSL 78 Hit!")
-    elif ltp >=195:
-        await context.bot.send_message(chat_id=CHAT_ID, text=f"🤑 TGT2 HIT! 25200 CE ₹{ltp}\nProfit ₹{(ltp-120)*130}")
-    elif ltp >=155:
-        await context.bot.send_message(chat_id=CHAT_ID, text=f"🎯 TGT1 HIT! 25200 CE ₹{ltp}\nProfit ₹{(ltp-120)*130}")
+async def strike(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    if not context.args:
+        await update.message.reply_text("Use: /strike 25200")
+        return
+    try:
+        s = int(context.args[0])
+        ltp = get_ltp(s)
+        await update.message.reply_text(f"💰 NIFTY {s} CE LTP: ₹{ltp}")
+    except: await update.message.reply_text("Strike bhul!")
 
-app=Application.builder().token(BOT_TOKEN).build()
-app.add_handler(CommandHandler("today",today))
-app.add_handler(CommandHandler("pnl",pnl))
-app.add_handler(CommandHandler("strike",strike))
+# --- 4. LIVE AUTO CHECK HAR 1 MIN ---
+async def check_price(context: ContextTypes.DEFAULT_TYPE):
+    if not CHAT_ID: return
+    ltp = get_ltp(25200)
+    if not ltp: return
+    try:
+        if ltp <= 78:
+            await context.bot.send_message(chat_id=CHAT_ID, text=f"🛑 SL HIT! 25200 CE LTP ₹{ltp} (SL 78)\nLOSS ₹{(ltp-120)*75} EXIT KARO!")
+        elif ltp >= 195:
+            await context.bot.send_message(chat_id=CHAT_ID, text=f"🤑 TGT2 HIT! 25200 CE ₹{ltp} -> ₹195\nPROFIT ₹{(ltp-120)*75} BOOK KARO!")
+        elif ltp >= 155:
+            await context.bot.send_message(chat_id=CHAT_ID, text=f"🎯 TGT1 HIT! 25200 CE ₹{ltp} -> ₹155\nPROFIT ₹{(ltp-120)*75} 50% BOOK!")
+    except: pass
 
-if app.job_queue:
-    app.job_queue.run_repeating(check_price, interval=60, first=10)
+async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    await update.message.reply_text("🔱 KALKI LIVE! Commands:\n/today - Call\n/pnl - Live PnL\n/strike 25200 - Price")
 
-print("Bot Started...")
-app.run_polling()
+def main():
+    # Flask Start
+    threading.Thread(target=run_flask).start()
+
+    app = Application.builder().token(BOT_TOKEN).build()
+    app.add_handler(CommandHandler("start", start))
+    app.add_handler(CommandHandler("today", today))
+    app.add_handler(CommandHandler("pnl", pnl))
+    app.add_handler(CommandHandler("strike", strike))
+
+    # Har 60 Sec Check
+    if app.job_queue:
+        app.job_queue.run_repeating(check_price, interval=60, first=10)
+
+    print("🔱 KALKI BOT LIVE...")
+    app.run_polling()
+
+if __name__ == "__main__":
+    main()
