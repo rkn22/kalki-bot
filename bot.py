@@ -118,6 +118,9 @@ async def morning_call(context):
     pcr_ok = pcr > 1.0
     vol_ok = vol > avg_vol
     accuracy = calculate_accuracy(candle["signal"], st15_ok, st5_ok, vix_ok, pcr_ok, vol_ok)
+    try: open('data.json','w').write(json.dumps({"acc": accuracy, "pat": candle['pattern'], "price": c, "vix": vix, "time": datetime.now().strftime("%H:%M")}))
+    except: pass
+    print(f"BOT SEND {accuracy}% {candle['pattern']}")
     all_match = candle["signal"] and st15_ok and st5_ok and vix_ok and pcr_ok and vol_ok
     if not (all_match and accuracy >= MIN_ACCURACY):
         print(f"SKIP - Acc: {accuracy}% - Match: {all_match}")
