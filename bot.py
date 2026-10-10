@@ -157,7 +157,7 @@ async def github_run_once():
     ctx = DummyContext(bot)
     print(f"✅ KALKI AUTO - 70%+ Loop + SL/TGT - Started at 9:15")
     
-    for i in range(12):
+    for i in range(25):
         success, acc, pat = await morning_call(ctx)
         if success:
             print(f"✅ DONE - Sent on try {i+1} - Start SL/TGT Monitor")
@@ -168,7 +168,7 @@ async def github_run_once():
         if i < 11:
             await asyncio.sleep(300)
 
-    print("❌ 10:55 heigala - 70% mililani")
+    print("❌ 11:15 heigala - 70% mililani")
 
 def main():
     if os.getenv("GITHUB_ACTIONS") == "true":
