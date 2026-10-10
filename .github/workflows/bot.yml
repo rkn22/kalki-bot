@@ -1,7 +1,7 @@
 name: Kalki Bot
 on:
   schedule:
-    - cron: '15 3 * * 1-5'
+    - cron: '50 3 * * 1-5'  # 9:20 AM IST
   workflow_dispatch:
 jobs:
   run:
