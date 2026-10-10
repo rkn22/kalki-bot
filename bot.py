@@ -23,7 +23,7 @@ def load_state():
         return {"date": "", "first_sent": False, "second_sent": False, "hit": False}
 
 def save_state(s):
-    with open(STATE_FILE, 'w') as f: json.dump(f, s)
+   with open(STATE_FILE, 'w') as f: json.dump(s, f) 
 
 def get_tier(acc):
     if acc >= 100: return "💯🔥 GOD MODE"
