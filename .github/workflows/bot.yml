@@ -1,31 +1,19 @@
-name: Kalki 15.0 Bot
+name: Kalki Bot
 on:
   schedule:
-    - cron: '45 3 * * 1-5'
-    - cron: '30 4 * * 1-5'
-    - cron: '15 5 * * 1-5'
-    - cron: '0 6 * * 1-5'
-    - cron: '45 6 * * 1-5'
-    - cron: '30 7 * * 1-5'
-    - cron: '15 8 * * 1-5'
-    - cron: '0 9 * * 1-5'
-    - cron: '45 9 * * 1-5'
+    - cron: '15 3 * * 1-5'  # 9:15 AM IST Mon-Fri
   workflow_dispatch:
+
 jobs:
-  trade:
+  run:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v3
       - uses: actions/setup-python@v4
         with:
-          python-version: '3.11'
-      - name: Install Dependencies
-        run: |
-          pip install "python-telegram-bot[job-queue]"
-          pip install requests
-      - name: Run Bot
+          python-version: '3.9'
+      - run: pip install python-telegram-bot requests
+      - run: python call.py
         env:
           BOT_TOKEN: ${{ secrets.BOT_TOKEN }}
           CHAT_ID: ${{ secrets.CHAT_ID }}
-          MODE: GITHUB
-        run: python bot.py
