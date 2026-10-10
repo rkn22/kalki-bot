@@ -1,8 +1,12 @@
 import requests, os
 from datetime import datetime, timedelta
+from telegram.ext import Application, CommandHandler
+from telegram import Update
 
 BOT_TOKEN = os.getenv("BOT_TOKEN")
 CHAT_ID = os.getenv("CHAT_ID")
+
+active_trade = {"strike": None, "ce_entry": 0, "tgt1":0, "tgt2":0, "sl":0, "active":False, "pnl":0}
 
 def get_nifty():
     try:
@@ -24,73 +28,152 @@ def get_nifty():
         n = [x for x in data['data'] if x['index'] == 'NIFTY 50'][0]
         return float(n['last']), float(n['percentChange']), float(n['open']), float(n['dayHigh']), float(n['dayLow'])
 
-try:
-    price, pct, o, h, l = get_nifty()
-except:
-    print("❌ API Fail")
-    exit()
+def get_option_ltp(strike):
+    try:
+        s = requests.Session()
+        s.get("https://www.nseindia.com", headers={"User-Agent":"Mozilla/5.0"}, timeout=10)
+        data = s.get("https://www.nseindia.com/api/option-chain-indices?symbol=NIFTY", headers={"User-Agent":"Mozilla/5.0","Referer":"https://www.nseindia.com/option-chain"}, timeout=10).json()
+        for d in data['records']['data']:
+            if d.get('strikePrice') == strike and 'CE' in d:
+                return float(d['CE']['lastPrice'])
+        return None
+    except:
+        return None
 
-utc_now = datetime.utcnow() + timedelta(hours=5, minutes=30)
-now = utc_now.strftime("%I:%M %p")
-expiry_str = (utc_now + timedelta(days=(1 - utc_now.weekday()) % 7)).strftime("%d %b").upper()
+def get_expiry():
+    ist = datetime.utcnow() + timedelta(hours=5, minutes=30)
+    days_ahead = (1 - ist.weekday()) % 7
+    if days_ahead == 0 and ist.hour >= 15:
+        days_ahead = 7
+    expiry = ist + timedelta(days=days_ahead)
+    return expiry.strftime("%d %b").upper()
 
-body = abs(price - o)
-rng = h - l if h!= l else 1
-upper = h - max(price, o)
-lower = min(price, o) - l
+async def morning_call(context):
+    global active_trade
+    try:
+        price, pct, o, h, l = get_nifty()
+        ist_now = datetime.utcnow() + timedelta(hours=5, minutes=30)
+        now = ist_now.strftime("%I:%M %p")
+        expiry_str = get_expiry()
+        atm = round(price / 50) * 50
 
-if body < rng * 0.15:
-    pattern = "⚪ Doji - Confusion 😕"
-    acc = 50
-elif upper > body * 2:
-    pattern = "🌠 Shooting Star @ Resistance ⚠️"
-    acc = 60
-elif lower > body * 2:
-    pattern = "🔨 Hammer @ Support 💪"
-    acc = 88
-elif price > o and pct > 0.8:
-    pattern = "🐂 Bullish Engulfing 🚀"
-    acc = 90
-elif price < o and pct < -0.8:
-    pattern = "🐻 Bearish Engulfing 🔻"
-    acc = 40
-else:
-    pattern = "✅ Bullish Hold @ Support 📈"
-    acc = 78
+        body = abs(price - o)
+        rng = h - l if h!= l else 1
+        upper = h - max(price, o)
+        lower = min(price, o) - l
 
-zone = "⚠️ Inside 22500-22540 🔴" if 22500 <= price <= 22540 and acc > 65 else "🟢 Outside Safe Zone ✅"
-if 22500 <= price <= 22540 and acc > 65:
-    acc = 60
+        if body < rng * 0.15: acc = 50
+        elif upper > body * 2: acc = 60
+        elif lower > body * 2: acc = 88
+        elif price > o and pct > 0.8: acc = 90
+        elif price < o and pct < -0.8: acc = 40
+        else: acc = 78
 
-# EMOJI OUTPUT
-if acc < 65:
-    msg = (
-        f"🚫 SKIP {now} ⏰\n"
-        f"📊 NIFTY: {price} ({pct}%)\n"
-        f"📉 O:{o} H:{h} L:{l}\n"
-        f"🕯️ Pattern: {pattern}\n"
-        f"📍 Zone: {zone}\n"
-        f"🎯 Acc: {acc}% LOW - No Trade ❌"
+        if acc < 65:
+            msg = f"🚫 SKIP {now}\n📊 NIFTY: {price} ({pct}%)\n🎯 Acc: {acc}% LOW ❌"
+            await context.bot.send_message(chat_id=CHAT_ID, text=msg)
+            return
+
+        ce = get_option_ltp(atm) or round(price * 0.006)
+        tgt1 = ce + 25
+        tgt2 = ce + 60
+        sl = ce - 40
+        active_trade = {"strike": atm, "ce_entry": ce, "tgt1": tgt1, "tgt2": tgt2, "sl": sl, "active": True, "pnl": 0}
+
+        msg = f"🔱 KALKI 15.0 STRONG CALL {now} 🚀\n📊 NIFTY: {price} ({pct}%) 💹\n🎯 Acc: {acc}% SAFE ✅\n\n💰 BUY {atm} CE {expiry_str} @ ₹{ce} 💸\n🎯 TGT1: ₹{tgt1} TGT2: ₹{tgt2} 🤑\n🛑 SL: ₹{sl} ⚠️\n📦 1 LOT (75 Qty)"
+        await context.bot.send_message(chat_id=CHAT_ID, text=msg)
+    except Exception as e:
+        print(f"Error: {e}")
+
+async def live_check(context):
+    global active_trade
+    if not active_trade["active"]:
+        return
+    try:
+        ltp = get_option_ltp(active_trade["strike"])
+        if not ltp: return
+        if ltp >= active_trade["tgt2"]:
+            profit = (ltp - active_trade["ce_entry"]) * 75
+            active_trade["pnl"] = profit
+            msg = f"🎯 TGT2 HIT! 🤑\n{active_trade['strike']} CE: {active_trade['ce_entry']} -> {ltp}\n💰 Profit: ₹{profit}\nBOOK KARO!"
+            await context.bot.send_message(chat_id=CHAT_ID, text=msg)
+            active_trade["active"] = False
+        elif ltp >= active_trade["tgt1"]:
+            profit = (ltp - active_trade["ce_entry"]) * 75
+            active_trade["pnl"] = profit
+            msg = f"✅ TGT1 HIT!\n{active_trade['strike']} CE: {active_trade['ce_entry']} -> {ltp}\n💰 Profit: ₹{profit}\n50% BOOK!"
+            await context.bot.send_message(chat_id=CHAT_ID, text=msg)
+        elif ltp <= active_trade["sl"]:
+            loss = (ltp - active_trade["ce_entry"]) * 75
+            active_trade["pnl"] = loss
+            msg = f"🛑 SL HIT! ⚠️\n{active_trade['strike']} CE: {active_trade['ce_entry']} -> {ltp}\n💸 Loss: ₹{loss}\nEXIT!"
+            await context.bot.send_message(chat_id=CHAT_ID, text=msg)
+            active_trade["active"] = False
+    except Exception as e:
+        print(f"Live Error: {e}")
+
+# --- COMMANDS ---
+
+async def start(update: Update, context):
+    await update.message.reply_text(
+        "🔱 KALKI 15.0 FnO Bot Ready! 🚀\n\n"
+        "/today - Aji Trade\n"
+        "/pnl - Profit/Loss\n"
+        "/stop - Band Kara\n"
+        "/strike 25000 - LTP Dekha"
     )
-else:
-    ce = round(price * 0.006)
-    tgt1 = ce + 25
-    tgt2 = ce + 60
-    sl = ce - 40
-    p1 = (tgt1 - ce) * 75
-    p2 = (tgt2 - ce) * 75
-    msg = (
-        f"🔱 KALKI 15.0 STRONG CALL {now} 🚀\n"
-        f"📊 NIFTY: {price} ({pct}%) 💹\n"
-        f"🕯️ Pattern: {pattern}\n"
-        f"📍 Zone: {zone} | 🎯 Acc: {acc}% SAFE ✅\n\n"
-        f"💰 BUY 22500 CE {expiry_str} EXP @ ₹{ce} 💸\n"
-        f"🎯 TGT1: ₹{tgt1} TGT2: ₹{tgt2} 🤑\n"
-        f"🛑 SL: ₹{sl} ⚠️\n\n"
-        f"💵 Profit TGT1: Rs.{p1} TGT2: Rs.{p2} 💰\n"
-        f"📅 Exp: {expiry_str} Tue | 1 LOT 📦"
-    )
 
-print(msg)
-if BOT_TOKEN and CHAT_ID:
-    requests.get(f"https://api.telegram.org/bot{BOT_TOKEN}/sendMessage?chat_id={CHAT_ID}&text={msg}", timeout=10)
+async def today(update: Update, context):
+    if not active_trade["strike"]:
+        await update.message.reply_text("🚫 Aji Kichi Trade Nahi!")
+        return
+    ltp = get_option_ltp(active_trade["strike"]) or 0
+    status = "🟢 ACTIVE" if active_trade["active"] else "🔴 CLOSED"
+    msg = (
+        f"📊 TODAY TRADE {status}\n\n"
+        f"Strike: {active_trade['strike']} CE\n"
+        f"Entry: ₹{active_trade['ce_entry']}\n"
+        f"LTP: ₹{ltp}\n"
+        f"TGT1: ₹{active_trade['tgt1']}\n"
+        f"TGT2: ₹{active_trade['tgt2']}\n"
+        f"SL: ₹{active_trade['sl']}"
+    )
+    await update.message.reply_text(msg)
+
+async def pnl(update: Update, context):
+    pnl_val = active_trade.get("pnl", 0)
+    emoji = "🤑" if pnl_val > 0 else "💸" if pnl_val < 0 else "😐"
+    await update.message.reply_text(f"💰 PNL: ₹{pnl_val} {emoji}\nStrike: {active_trade.get('strike','-')} CE")
+
+async def stop(update: Update, context):
+    global active_trade
+    active_trade["active"] = False
+    await update.message.reply_text("🛑 Trade Band Hela! Au Alert Asibani.")
+
+async def strike(update: Update, context):
+    if not context.args:
+        await update.message.reply_text("Use: /strike 25000")
+        return
+    try:
+        stk = int(context.args[0])
+        ltp = get_option_ltp(stk)
+        if ltp:
+            await update.message.reply_text(f"📊 {stk} CE LTP: ₹{ltp} 💹")
+        else:
+            await update.message.reply_text("❌ Data Miluni, Tike Pare Try Kara")
+    except:
+        await update.message.reply_text("❌ Sahi Strike Dia - Ex: /strike 25000")
+
+if __name__ == "__main__":
+    app = Application.builder().token(BOT_TOKEN).build()
+    app.add_handler(CommandHandler("start", start))
+    app.add_handler(CommandHandler("today", today))
+    app.add_handler(CommandHandler("pnl", pnl))
+    app.add_handler(CommandHandler("stop", stop))
+    app.add_handler(CommandHandler("strike", strike))
+
+    app.job_queue.run_daily(morning_call, time=datetime.strptime("03:45", "%H:%M").time(), days=(0,1,2,3,4))
+    app.job_queue.run_repeating(live_check, interval=300, first=10)
+
+    print("Bot Started...")
+    app.run_polling()
