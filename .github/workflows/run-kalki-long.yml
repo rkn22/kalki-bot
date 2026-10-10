@@ -1,20 +1,24 @@
-name: Kalki Long 400
+name: Kalki 9AM PreMarket
 on:
   schedule:
-    - cron: '45 3 * * 1-5'
+    - cron: '30 3 * * 1-5'  # 9:00 AM IST = Pre-Market Start
   workflow_dispatch:
+
 jobs:
-  run:
+  build:
     runs-on: ubuntu-latest
-    timeout-minutes: 400
+    timeout-minutes: 145  # 9:00 to 11:25
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-python@v5
         with:
           python-version: '3.11'
-      - run: pip install -r requirements.txt yfinance
-      - run: python -u bot.py
+      - run: pip install -r requirements.txt
+      - name: Run Bot + Master 2-Way
         env:
           BOT_TOKEN: ${{ secrets.BOT_TOKEN }}
           CHAT_ID: ${{ secrets.CHAT_ID }}
-          GITHUB_ACTIONS: true
+        run: |
+          python bot.py &
+          sleep 20
+          python master_live.py
