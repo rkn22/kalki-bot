@@ -6,7 +6,6 @@ from telegram.ext import Application, CommandHandler
 BOT = os.getenv("BOT_TOKEN")
 CHAT = os.getenv("CHAT_ID")
 
-# ================= CONFIG - 10000 =================
 CAPITAL = 10000
 LOT_SIZE = 75
 ENTRY = 120
@@ -26,7 +25,12 @@ def load_state():
 def save_state(s):
     with open(STATE_FILE, 'w') as f: json.dump(f, s)
 
-# ================= CANDLE PATTERN LOGIC =================
+def get_tier(acc):
+    if acc >= 100: return "💯🔥 GOD MODE"
+    elif acc >= 90: return "🔥 SUPER STRONG"
+    elif acc >= 80: return "💪 STRONG"
+    else: return "✅ NORMAL"
+
 def check_candle_pattern(o,h,l,c, prev_o, prev_c, vol, avg_vol):
     body = abs(c - o)
     if (h-l) == 0: return {"signal": False, "pattern": "None"}
@@ -36,8 +40,7 @@ def check_candle_pattern(o,h,l,c, prev_o, prev_c, vol, avg_vol):
     hammer = (lower_wick > body*2) and (upper_wick < body*0.3) and (body > 0)
     vol_ok = vol > avg_vol * 1.2
     doji = body < (h-l)*0.1
-    if doji:
-        return {"signal": False, "pattern": "DOJI-REJECT"}
+    if doji: return {"signal": False, "pattern": "DOJI-REJECT"}
     if (bullish_engulf or hammer) and vol_ok:
         pat = "BULL-ENGULF" if bullish_engulf else "HAMMER"
         return {"signal": True, "pattern": pat}
@@ -54,15 +57,16 @@ def calculate_accuracy(candle_ok, st15_ok, st5_ok, vix_ok, pcr_ok, vol_ok):
     if vix_ok and pcr_ok and vol_ok: score += 20
     return score
 
-# ================= MSG BUILDER - SAME =================
-def build_msg(num, time_str, pat="BULL-ENGULF"):
+def build_msg(num, time_str, pat="BULL-ENGULF", acc=100):
+    tier = get_tier(acc)
     profit1 = (TGT1-ENTRY)*LOT_SIZE
     profit2 = (TGT2-ENTRY)*LOT_SIZE
     loss = (ENTRY-SL)*LOT_SIZE
-    return f"""🔱 KALKI 15.0 - {num}ND CALL | {time_str} 🔱
+    emoji = "💯" if acc >= 100 else "🔥" if acc >= 90 else "💪" if acc >= 80 else "✅"
+    return f"""{emoji} 🔱 KALKI 15.0 - {num}ND CALL | {time_str} 🔱
 INSTRUMENT: NIFTY 50 25200 CE - TUESDAY EXPIRY
 
-📊 NIFTY: 25220 | Accuracy: {pat} ✅
+📊 NIFTY: 25220 | Accuracy: {acc}% ({tier})
 Candle: {pat} ✅ | Vol >20DMA ✅
 Double Supertrend: 15min BUY + 5min BUY ✅
 Filters: VIX 13.2 ✅ PCR 1.05 ✅ OI Bullish ✅
@@ -82,15 +86,13 @@ Qty: {LOT_SIZE} | Paper Trading Only
 ⚠️ Educational Only - Not SEBI Reg
 /today /pnl /strike 25200"""
 
-# ================= FUNCTIONS - SAME =================
 async def morning_call(context):
     s = load_state()
     today = datetime.now().strftime("%d-%m-%Y")
     if s["date"] != today:
         s = {"date": today, "first_sent": False, "second_sent": False, "hit": False}
-    if s["first_sent"]:
-        return
-    o,h,l,c = 25180, 25240, 25170, 25220
+    if s["first_sent"]: return
+    o,h,l,c = 25150, 25240, 25170, 25220
     prev_o, prev_c = 25200, 25160
     vol, avg_vol = 150000, 100000
     st15, st5 = "BUY", "BUY"
@@ -106,7 +108,7 @@ async def morning_call(context):
     if not (all_match and 70 <= accuracy <= 100):
         print(f"SKIP - Acc: {accuracy}% - Match: {all_match} - Need 70-100%")
         return
-    await context.bot.send_message(chat_id=CHAT, text=build_msg(1, "09:15 AM", f"{candle['pattern']} {accuracy}%"))
+    await context.bot.send_message(chat_id=CHAT, text=build_msg(1, "09:15 AM", candle['pattern'], accuracy))
     s["first_sent"] = True
     s["date"] = today
     save_state(s)
@@ -132,7 +134,7 @@ async def sl_tgt_check(context):
 async def second_call_trigger(context):
     s = load_state()
     if not s["second_sent"] and s["hit"]:
-        o,h,l,c = 25180, 25240, 25170, 25220
+        o,h,l,c = 25150, 25240, 25170, 25220
         prev_o, prev_c = 25200, 25160
         vol, avg_vol = 150000, 100000
         st15, st5 = "BUY", "BUY"
@@ -149,7 +151,7 @@ async def second_call_trigger(context):
             print(f"2nd Call Skip - Acc {accuracy}%")
             return
         t = datetime.now().strftime("%I:%M %p")
-        await context.bot.send_message(chat_id=CHAT, text=build_msg(2, t, f"{candle['pattern']} {accuracy}%"))
+        await context.bot.send_message(chat_id=CHAT, text=build_msg(2, t, candle['pattern'], accuracy))
         s["second_sent"] = True
         save_state(s)
         print(f"2nd Call Sent - {candle['pattern']} {accuracy}%")
@@ -165,14 +167,13 @@ Within 10000 ✅"""
     await context.bot.send_message(chat_id=CHAT, text=txt)
 
 async def cmd_today(update, context):
-    await update.message.reply_text(build_msg(1, "Live"))
+    await update.message.reply_text(build_msg(1, "Live", "TEST", 85))
 async def cmd_pnl(update, context):
     s = load_state()
     await update.message.reply_text(f"P&L - Cap {CAPITAL} - Cost {COST} - State {s}")
 async def cmd_strike(update, context):
     await update.message.reply_text(f"Strike 25200 CE | LTP {ENTRY} | 1 LOT = {COST} within 10000")
 
-# ================= FIXED MAIN - NO ERROR =================
 class DummyContext:
     def __init__(self, bot):
         self.bot = bot
@@ -184,11 +185,9 @@ async def github_run_once():
     await morning_call(ctx)
 
 def main():
-    # GitHub Actions re chalile direct one-time run
     if os.getenv("GITHUB_ACTIONS") == "true":
         asyncio.run(github_run_once())
     else:
-        # Local PC re polling mode
         app = Application.builder().token(BOT).build()
         app.job_queue.run_daily(morning_call, time=time(hour=3, minute=45))
         app.job_queue.run_repeating(sl_tgt_check, interval=60, first=10)
