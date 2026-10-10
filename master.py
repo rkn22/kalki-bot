@@ -17,13 +17,21 @@ def RECEIVE_FROM_BOT():
         if os.path.exists('data.json'):
             d=json.loads(open('data.json').read())
             print(f"📥 RECEIVED FROM BOT: {d}")
+            # ===== ONLY ADDED - NO CHANGES - Fallback for Bot.py keys =====
+            acc_val = d.get('accuracy', 0) if d.get('accuracy', 0)!=0 else d.get('acc', 0)
+            pat_val = d.get('pattern','No Data') if d.get('pattern','No Data')!='No Data' else d.get('pat','No Data')
+            n_price_val = d.get('nifty_price',0) if d.get('nifty_price',0)!=0 else d.get('price',0)
+            b_price_val = d.get('bank_price',0)  # Bot re nahi - Live ru asiba
+            time_val = d.get('time','')
+            sig_val = d.get('bot_signal','WAIT') if d.get('bot_signal','WAIT')!='WAIT' else d.get('signal','WAIT')
+            # ===== END ONLY ADDED =====
             return {
-                "acc": d.get('accuracy',0),
-                "pat": d.get('pattern','No Data'),
-                "n_price": d.get('nifty_price',0),
-                "b_price": d.get('bank_price',0),
-                "time": d.get('time',''),
-                "sig": d.get('bot_signal','WAIT'),
+                "acc": acc_val,
+                "pat": pat_val,
+                "n_price": n_price_val,
+                "b_price": b_price_val,
+                "time": time_val,
+                "sig": sig_val,
                 "ok": True
             }
     except Exception as e:
