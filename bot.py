@@ -3,7 +3,6 @@ from datetime import time, datetime
 from telegram import Bot
 from telegram.ext import Application, CommandHandler
 
-# Real data pain add
 try:
     import yfinance as yf
     YF = True
@@ -20,17 +19,7 @@ TGT1, TGT2, SL = 155, 195, 78
 COST = ENTRY * LOT_SIZE
 BAL = CAPITAL - COST
 LOTS = 1
-STATE_FILE = "state.json"
 MIN_ACCURACY = 70
-
-def load_state():
-    try:
-        with open(STATE_FILE) as f: return json.load(f)
-    except:
-        return {"date": "", "first_sent": False, "second_sent": False, "hit": False}
-
-def save_state(s):
-    with open(STATE_FILE, 'w') as f: json.dump(s, f)
 
 def get_tier(acc):
     if acc >= 100: return "💯🔥 GOD MODE"
@@ -39,12 +28,10 @@ def get_tier(acc):
     else: return "✅ NORMAL"
 
 def fetch_live():
-    # Real data try
     if YF:
         try:
             t = yf.Ticker("^NSEI")
             d = t.history(period="1mo", interval="1d")
-            d15 = t.history(period="5d", interval="15m")
             if len(d) >= 20:
                 o = float(d['Open'].iloc[-1])
                 h = float(d['High'].iloc[-1])
@@ -54,7 +41,6 @@ def fetch_live():
                 prev_c = float(d['Close'].iloc[-2])
                 vol = float(d['Volume'].iloc[-1])
                 avg_vol = float(d['Volume'].tail(20).mean())
-                # VIX try
                 try:
                     vix_data = yf.Ticker("^INDIAVIX").history(period="1d")
                     vix = float(vix_data['Close'].iloc[-1])
@@ -63,7 +49,6 @@ def fetch_live():
                 return o,h,l,c,prev_o,prev_c,vol,avg_vol,vix,1.05,"BUY","BUY"
         except:
             pass
-    # Fail hele puruna same data
     return 25150, 25240, 25170, 25220, 25200, 25160, 150000, 100000, 13.2, 1.05, "BUY", "BUY"
 
 def check_candle_pattern(o,h,l,c, prev_o, prev_c, vol, avg_vol):
@@ -81,9 +66,6 @@ def check_candle_pattern(o,h,l,c, prev_o, prev_c, vol, avg_vol):
         return {"signal": True, "pattern": pat}
     return {"signal": False, "pattern": "No Pattern"}
 
-def check_double_supertrend(st_15, st_5):
-    return st_15 == "BUY" and st_5 == "BUY"
-
 def calculate_accuracy(candle_ok, st15_ok, st5_ok, vix_ok, pcr_ok, vol_ok):
     score = 0
     if candle_ok: score += 30
@@ -100,33 +82,24 @@ def build_msg(num, time_str, pat="BULL-ENGULF", acc=100):
     emoji = "💯" if acc >= 100 else "🔥" if acc >= 90 else "💪" if acc >= 80 else "✅"
     return f"""{emoji} 🔱 KALKI 15.0 - {num}ND CALL | {time_str} 🔱
 INSTRUMENT: NIFTY 50 25200 CE - TUESDAY EXPIRY
-
 📊 NIFTY: 25220 | Accuracy: {acc}% ({tier})
 Candle: {pat} ✅ | Vol >20DMA ✅
 Double Supertrend: 15min BUY + 5min BUY ✅
 Filters: VIX 13.2 ✅ PCR 1.05 ✅ OI Bullish ✅
-
 ENTRY: ₹{ENTRY} Zone (115-125)
 CMP: ₹{ENTRY}
 TGT1: ₹{TGT1} (+₹{profit1}) 🎯
 TGT2: ₹{TGT2} (+₹{profit2}) 🤑
 SL: ₹{SL} (-₹{loss}) 🛑
-
 INVESTMENT:
 Capital: ₹{CAPITAL} | {LOTS} LOT = ₹{COST}
 Balance: ₹{BAL} | Within 10000 ✅
 Qty: {LOT_SIZE} | Paper Trading Only
-
 📦 {LOTS} LOT STRICT
-⚠️ Educational Only - Not SEBI Reg
+⚠️ Educational Only
 /today /pnl /strike 25200"""
 
 async def morning_call(context):
-    s = load_state()
-    today = datetime.now().strftime("%d-%m-%Y")
-    if s["date"] != today:
-        s = {"date": today, "first_sent": False, "second_sent": False, "hit": False}
-    if s["first_sent"]: return
     o,h,l,c,prev_o,prev_c,vol,avg_vol,vix,pcr,st15,st5 = fetch_live()
     candle = check_candle_pattern(o,h,l,c, prev_o, prev_c, vol, avg_vol)
     st15_ok = st15 == "BUY"
@@ -136,93 +109,74 @@ async def morning_call(context):
     vol_ok = vol > avg_vol
     accuracy = calculate_accuracy(candle["signal"], st15_ok, st5_ok, vix_ok, pcr_ok, vol_ok)
     all_match = candle["signal"] and st15_ok and st5_ok and vix_ok and pcr_ok and vol_ok
-    if not (all_match and 70 <= accuracy <= 100):
-        print(f"SKIP - Acc: {accuracy}% - Match: {all_match} - Need 70-100%")
-        return
-    await context.bot.send_message(chat_id=CHAT, text=build_msg(1, "09:15 AM", candle['pattern'], accuracy))
-    s["first_sent"] = True
-    s["date"] = today
-    save_state(s)
-    print(f"1st Call Sent - {candle['pattern']} {accuracy}%")
-
-async def sl_tgt_check(context):
-    s = load_state()
-    if s["date"] != datetime.now().strftime("%d-%m-%Y"): return
-    if s["hit"]: return
-    cmp_now = 120
-    msg = None
-    if cmp_now >= TGT1:
-        msg = f"🎯 TGT1 HIT: {TGT1} | Profit +₹{(TGT1-ENTRY)*LOT_SIZE} | 1 LOT"
-        s["hit"] = True
-    elif cmp_now <= SL:
-        msg = f"🛑 SL HIT: {SL} | Loss -₹{(ENTRY-SL)*LOT_SIZE} | 1 LOT"
-        s["hit"] = True
-    if msg:
-        await context.bot.send_message(chat_id=CHAT, text=msg)
-        save_state(s)
-        await second_call_trigger(context)
-
-async def second_call_trigger(context):
-    s = load_state()
-    if not s["second_sent"] and s["hit"]:
-        o,h,l,c,prev_o,prev_c,vol,avg_vol,vix,pcr,st15,st5 = fetch_live()
-        candle = check_candle_pattern(o,h,l,c, prev_o, prev_c, vol, avg_vol)
-        st15_ok = st15 == "BUY"
-        st5_ok = st5 == "BUY"
-        vix_ok = vix < 14
-        pcr_ok = pcr > 1.0
-        vol_ok = vol > avg_vol
-        accuracy = calculate_accuracy(candle["signal"], st15_ok, st5_ok, vix_ok, pcr_ok, vol_ok)
-        all_match = candle["signal"] and st15_ok and st5_ok and vix_ok and pcr_ok and vol_ok
-        if not (all_match and 70 <= accuracy <= 100):
-            print(f"2nd Call Skip - Acc {accuracy}%")
-            return
-        t = datetime.now().strftime("%I:%M %p")
-        await context.bot.send_message(chat_id=CHAT, text=build_msg(2, t, candle['pattern'], accuracy))
-        s["second_sent"] = True
-        save_state(s)
-        print(f"2nd Call Sent - {candle['pattern']} {accuracy}%")
-
-async def auto_pnl(context):
-    s = load_state()
-    txt = f"""📊 EOD P&L - {s['date']}
-Capital: ₹{CAPITAL} | 1 LOT = ₹{COST} | Bal: ₹{BAL}
-1st Call: {'Done' if s['first_sent'] else 'No'}
-2nd Call: {'Done' if s['second_sent'] else 'No'}
-Hit: {'TGT1/SL Hit' if s['hit'] else 'No Hit'}
-Within 10000 ✅"""
-    await context.bot.send_message(chat_id=CHAT, text=txt)
-
-async def cmd_today(update, context):
-    await update.message.reply_text(build_msg(1, "Live", "TEST", 85))
-async def cmd_pnl(update, context):
-    s = load_state()
-    await update.message.reply_text(f"P&L - Cap {CAPITAL} - Cost {COST} - State {s}")
-async def cmd_strike(update, context):
-    await update.message.reply_text(f"Strike 25200 CE | LTP {ENTRY} | 1 LOT = {COST} within 10000")
+    if not (all_match and accuracy >= MIN_ACCURACY):
+        print(f"SKIP - Acc: {accuracy}% - Match: {all_match}")
+        return False, accuracy, candle['pattern']
+    await context.bot.send_message(chat_id=CHAT, text=build_msg(1, datetime.now().strftime("%I:%M %p"), candle['pattern'], accuracy))
+    print(f"✅ CALL SENT - {candle['pattern']} {accuracy}%")
+    return True, accuracy, candle['pattern']
 
 class DummyContext:
     def __init__(self, bot):
         self.bot = bot
 
+# 🔥 AUTO SL/TGT ALERT - ADD HELA
+async def monitor_sl_tgt(bot):
+    print("📡 SL/TGT Monitoring Started...")
+    # 3:20 PM jae check kariba (approx 4 hours)
+    for _ in range(240):  # 240 * 1 min = 4 hours
+        try:
+            # Real LTP - ebe NIFTY close use karucha, badare option LTP lagiba
+            # Ebe demo pain c = close use
+            _,_,_,c,_,_,_,_,_,_,_,_ = fetch_live()
+            # Option LTP simulate - real re yfinance option data lagiba
+            # Ebe ENTRY base re random check
+            cmp_now = ENTRY  # TODO: Real option LTP yfinance ru aniba
+            
+            # Demo logic - TGT1/SL hit check
+            # Real implementation re: cmp_now = option LTP
+            if cmp_now >= TGT1:
+                await bot.send_message(chat_id=CHAT, text=f"🎯 TGT1 HIT: ₹{TGT1} | Profit +₹{(TGT1-ENTRY)*LOT_SIZE} | {datetime.now().strftime('%I:%M %p')}")
+                print("TGT1 HIT - Monitoring band")
+                return
+            elif cmp_now >= TGT2:
+                await bot.send_message(chat_id=CHAT, text=f"🤑 TGT2 HIT: ₹{TGT2} | Profit +₹{(TGT2-ENTRY)*LOT_SIZE} | FULL TARGET!")
+                return
+            elif cmp_now <= SL:
+                await bot.send_message(chat_id=CHAT, text=f"🛑 SL HIT: ₹{SL} | Loss -₹{(ENTRY-SL)*LOT_SIZE} | {datetime.now().strftime('%I:%M %p')}")
+                print("SL HIT - Monitoring band")
+                return
+                
+        except Exception as e:
+            print(f"SL/TGT Check Error: {e}")
+        
+        await asyncio.sleep(60)  # 1 min pare check
+
 async def github_run_once():
     bot = Bot(token=BOT)
     ctx = DummyContext(bot)
-    print(f"✅ FINAL BOT.PY - {CAPITAL} - {LOTS} LOT - 70-100% Acc Filter - Lock - GitHub Mode - Real Data")
-    await morning_call(ctx)
+    print(f"✅ KALKI AUTO - 70%+ Loop + SL/TGT - Started at 9:15")
+    
+    for i in range(12):
+        success, acc, pat = await morning_call(ctx)
+        if success:
+            print(f"✅ DONE - Sent on try {i+1} - Start SL/TGT Monitor")
+            # 🔥 CALL milila pare SL/TGT auto start
+            await monitor_sl_tgt(bot)
+            return
+        print(f"⏳ Try {i+1}/12 - Acc {acc}% <70% - Wait 5min")
+        if i < 11:
+            await asyncio.sleep(300)
+
+    print("❌ 10:55 heigala - 70% mililani")
 
 def main():
     if os.getenv("GITHUB_ACTIONS") == "true":
         asyncio.run(github_run_once())
     else:
         app = Application.builder().token(BOT).build()
-        app.job_queue.run_daily(morning_call, time=time(hour=3, minute=45))
-        app.job_queue.run_repeating(sl_tgt_check, interval=60, first=10)
-        app.job_queue.run_daily(auto_pnl, time=time(hour=10, minute=0))
-        app.add_handler(CommandHandler("today", cmd_today))
-        app.add_handler(CommandHandler("pnl", cmd_pnl))
-        app.add_handler(CommandHandler("strike", cmd_strike))
-        print(f"✅ FINAL BOT.PY - {CAPITAL} - {LOTS} LOT - 70-100% Acc Filter - Lock - Local Mode - Real Data")
+        app.job_queue.run_daily(lambda ctx: asyncio.create_task(github_run_once()), time=time(hour=3, minute=45))
+        print(f"✅ LOCAL MODE - Auto 70% + SL/TGT")
         app.run_polling()
 
 if __name__ == "__main__":
