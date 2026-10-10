@@ -6,7 +6,7 @@ on:
 jobs:
   run:
     runs-on: ubuntu-latest
-    timeout-minutes: 400
+    timeout-minutes: 130
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-python@v5
