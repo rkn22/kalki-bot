@@ -1,7 +1,8 @@
 import requests, os
-from telegram import Update
-from telegram.ext import Application, CommandHandler, ContextTypes
+from telegram.ext import Application, CommandHandler
+
 BOT_TOKEN=os.getenv("BOT_TOKEN")
+CHAT_ID=os.getenv("CHAT_ID")
 
 def get_ltp(s=25200):
     try:
@@ -56,20 +57,21 @@ async def strike(update,ctx):
 
 async def check_price(context):
     ltp=get_ltp(25200)
-    if not ltp: return
-    chat_id=os.getenv("CHAT_ID")
+    if not ltp or not CHAT_ID: return
     if ltp <=78:
-        await context.bot.send_message(chat_id=chat_id, text=f"🛑 SL HIT ALERT!\n25200 CE LTP: ₹{ltp}\nSL 78 Hit! Educational Only")
-        context.job.schedule_removal()
+        await context.bot.send_message(chat_id=CHAT_ID, text=f"🛑 SL HIT ALERT!\n25200 CE LTP: ₹{ltp}\nSL 78 Hit!")
     elif ltp >=195:
-        await context.bot.send_message(chat_id=chat_id, text=f"🤑 TGT2 HIT! 25200 CE ₹{ltp}\nProfit ₹{(ltp-120)*130}")
-        context.job.schedule_removal()
+        await context.bot.send_message(chat_id=CHAT_ID, text=f"🤑 TGT2 HIT! 25200 CE ₹{ltp}\nProfit ₹{(ltp-120)*130}")
     elif ltp >=155:
-        await context.bot.send_message(chat_id=chat_id, text=f"🎯 TGT1 HIT! 25200 CE ₹{ltp}\nProfit ₹{(ltp-120)*130} - Trail SL!")
+        await context.bot.send_message(chat_id=CHAT_ID, text=f"🎯 TGT1 HIT! 25200 CE ₹{ltp}\nProfit ₹{(ltp-120)*130}")
 
 app=Application.builder().token(BOT_TOKEN).build()
 app.add_handler(CommandHandler("today",today))
 app.add_handler(CommandHandler("pnl",pnl))
 app.add_handler(CommandHandler("strike",strike))
-app.job_queue.run_repeating(check_price, interval=60, first=10)
+
+if app.job_queue:
+    app.job_queue.run_repeating(check_price, interval=60, first=10)
+
+print("Bot Started...")
 app.run_polling()
