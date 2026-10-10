@@ -21,6 +21,11 @@ BAL = CAPITAL - COST
 LOTS = 1
 MIN_ACCURACY = 70
 
+# === ADDED ONLY - SUCCESS FILTER ===
+OPENING_SKIP_MIN = 1  # 1st try 10min wait = 9:25 start - opening volatility skip
+VIX_MAX = 18  # VIX bahut high hele skip - success badhiba
+# === END ADDED ===
+
 def get_tier(acc):
     if acc >= 100: return "💯🔥 GOD MODE"
     elif acc >= 90: return "🔥 SUPER STRONG"
@@ -101,6 +106,11 @@ Qty: {LOT_SIZE} | Paper Trading Only
 
 async def morning_call(context):
     o,h,l,c,prev_o,prev_c,vol,avg_vol,vix,pcr,st15,st5 = fetch_live()
+    # === ADDED ONLY ===
+    if vix > VIX_MAX:
+        print(f"SKIP - VIX High {vix} > {VIX_MAX}")
+        return False, 0, "VIX-HIGH"
+    # === END ADDED ===
     candle = check_candle_pattern(o,h,l,c, prev_o, prev_c, vol, avg_vol)
     st15_ok = st15 == "BUY"
     st5_ok = st5 == "BUY"
@@ -146,6 +156,12 @@ async def github_run_once():
     ctx = DummyContext(bot)
     print(f"✅ KALKI AUTO - 70%+ Loop + SL/TGT - 10min Gap - Started at 9:15")
     for i in range(13):
+        # === ADDED ONLY - Opening volatility skip ===
+        if i == 0:
+            print(f"⏳ Opening 10min skip - Start 9:25 for better accuracy")
+            await asyncio.sleep(600)
+            continue
+        # === END ADDED ===
         success, acc, pat = await morning_call(ctx)
         if success:
             print(f"✅ DONE - Sent on try {i+1} - Start SL/TGT Monitor")
